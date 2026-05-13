@@ -18,7 +18,7 @@ It was built with a strong focus on **architecture quality**, **testability**, a
 
 ## ✨ Features
 
-- 📅 **Work Order Management** — Create, schedule, relocate, and track work orders across garage spots
+- 📅 **Work Order Management** — Create, schedule, relocate, assign labor, and track work orders across garage spots
 - 👥 **Customer & Vehicle Management** — Full CRUD with vehicle assignment
 - 🔧 **Repair Task Catalog** — Manage tasks with parts, labor costs, and estimated durations
 - 🧾 **Invoice Generation** — Auto-generate PDF invoices when work orders are completed
@@ -41,6 +41,7 @@ MechanicShop/
 │   ├── MechanicShop.Domain          # Entities, Value Objects, Domain Events, Result pattern
 │   ├── MechanicShop.Application     # CQRS Handlers, Validators, Pipeline Behaviors
 │   ├── MechanicShop.Infrastructure  # EF Core, Identity, Caching, SignalR, PDF, Background Jobs
+│   ├── MechanicShop.Contracts       # Shared request/response models
 │   ├── MechanicShop.Api             # Controllers, Middleware, OpenAPI, Program.cs
 │   └── MechanicShop.Client          # Blazor WebAssembly frontend (🚧 In Progress)
 ├── tests/
@@ -55,6 +56,7 @@ MechanicShop/
 ```
 Api → Application → Domain
 Infrastructure → Application → Domain
+Contracts → Api / Application
 ```
 
 The **Domain** layer has zero external dependencies. The **Application** layer depends only on interfaces. The **Infrastructure** layer provides the implementations.
@@ -90,10 +92,12 @@ The **Domain** layer has zero external dependencies. The **Application** layer d
 Instead of throwing exceptions for expected failures, every operation returns a `Result<T>` — either a success value or a list of typed errors. This makes failure handling explicit and consistent across all layers.
 
 ### Pipeline Behaviors
-Cross-cutting concerns are handled as MediatR pipeline behaviors:
+Cross-cutting concerns are handled as five MediatR pipeline behaviors:
 - **ValidationBehavior** — runs FluentValidation before every handler
 - **CachingBehavior** — caches query results with tag-based invalidation
 - **LoggingBehavior** — logs every request with user context
+- **PerformanceBehavior** — detects and logs slow requests exceeding 500ms
+- **UnhandledExceptionBehavior** — catches and logs unexpected exceptions at the pipeline level before rethrowing
 
 ### Domain Events
 Entities raise domain events (e.g. `WorkOrderCompleted`) that are dispatched inside `SaveChangesAsync`. This decouples side effects — sending emails, pushing SignalR notifications — from the core business logic.
@@ -105,7 +109,7 @@ An EF Core `SaveChangesInterceptor` automatically stamps `CreatedAt`, `CreatedBy
 
 ## 🧪 Testing Strategy
 
-The project uses a **three-layer testing pyramid**:
+The project uses a **four-tier testing pyramid** with **332 tests**:
 
 | Layer | Type | Description |
 |---|---|---|
